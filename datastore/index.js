@@ -20,12 +20,39 @@ exports.create = (text, callback) => {
 };
 
 exports.readAll = (callback) => {
-  fs.readdir(exports.dataDir, (err, filesData) => {
-    if (err) {
-      throw err;
-    }
-    let files = filesData.map((file) => ({id: file.slice(0, -4), text: file.slice(0, -4)}));
-    callback(err, files);
+  // fs.readdir(exports.dataDir, (err, filesData) => {
+  //   if (err) {
+  //     throw err;
+  //   }
+  //   let files = filesData.map((file) => ({id: file.slice(0, -4), text: file.slice(0, -4)}));
+  //   callback(err, files);
+  // });
+  let files = new Promise(function(resolve, reject) {
+    fs.readdir(exports.dataDir, (err, filenames) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(filenames);
+      }
+    });
+  }).then(function(value) {
+    
+    let filesObjs = value.map((file) => {
+      return new Promise(function(resolve, reject) {
+        fs.readFile(path.join(exports.dataDir, file), (err, text) => {
+          if (err) {
+            reject(err);
+          } else {
+            text = text.toString('utf8');
+            resolve({id: file.slice(0, -4), text});
+          }
+        });
+      });
+    });
+    return Promise.all(filesObjs);
+  }).then(function(values) {
+    console.log(values);
+    callback(null, values);
   });
 };
 

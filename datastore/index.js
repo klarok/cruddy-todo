@@ -2,32 +2,42 @@ const fs = require('fs');
 const path = require('path');
 const _ = require('underscore');
 const counter = require('./counter');
+var Promise = require('bluebird');
 
 var items = {};
 
 // Public API - Fix these CRUD functions ///////////////////////////////////////
 
 exports.create = (text, callback) => {
-  var id = counter.getNextUniqueId();
-  items[id] = text;
-  callback(null, { id, text });
+  counter.getNextUniqueId((err, id) => {
+    fs.writeFile(path.join(exports.dataDir, `${id}.txt`), text, (err) => {
+      if (err) {
+        throw err;
+      }
+      callback(err, {id, text});
+    });
+  });
 };
 
 exports.readAll = (callback) => {
-  var data = [];
-  _.each(items, (text, id) => {
-    data.push({ id, text });
+  fs.readdir(exports.dataDir, (err, filesData) => {
+    if (err) {
+      throw err;
+    }
+    let files = filesData.map((file) => ({id: file.slice(0, -4), text: file.slice(0, -4)}));
+    callback(err, files);
   });
-  callback(null, data);
 };
 
 exports.readOne = (id, callback) => {
-  var text = items[id];
-  if (!text) {
-    callback(new Error(`No item with id: ${id}`));
-  } else {
-    callback(null, { id, text });
-  }
+  fs.readFile(path.join(exports.dataDir, `${id}.txt`), (err, fileData) => {
+    if (err) {
+      callback(err, null);
+    } else {
+      let text = fileData.toString('utf8');
+      callback(err, {id, text});
+    }
+  });
 };
 
 exports.update = (id, text, callback) => {
